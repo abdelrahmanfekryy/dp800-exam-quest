@@ -312,3 +312,9 @@ details.scenario .md { margin-top: 10px; max-height: 55vh; overflow-y: auto; pad
 .yn.wrong::after { background: var(--bad); }
 .yn.should { border-color: var(--good); box-shadow: 0 0 0 3px rgba(46, 204, 113, .35); }
 .yn:disabled { cursor: default; }
+
+/* code blocks and tables inside options / stems */
+.opt pre { margin: 6px 0 0; font-size: 12.5px; }
+.opt .md > pre:first-child { margin-top: 0; }
+.stem pre, details.scenario pre { font-size: 13px; }
+.md td code, .md th code { white-space: nowrap; }
