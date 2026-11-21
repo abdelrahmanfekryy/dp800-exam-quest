@@ -1,0 +1,28 @@
+# DP-800 Exam Quest
+
+A gamified practice exam for **Microsoft DP-800: Developing AI-Enabled Database Solutions**.
+
+▶ **Play: https://abdelrahmanfekryy.github.io/dp800-exam-quest/**
+
+- 909 questions, each placed under one of the 3 official exam domains:
+  - Design and develop database solutions (35–40%)
+  - Secure, optimize, and deploy database solutions (35–40%)
+  - Implement AI capabilities in database solutions (25–30%)
+- Exam simulation in 3 weighted sections, with a score out of 1000 per domain and overall (700 to pass)
+- Domain drills, mistake review, and a searchable study bank
+- The answer is hidden under every question: check your answer or click to reveal it
+- XP, levels, combos and badges. Progress stays in your browser.
+
+## Question sources
+
+- ExamTopics DP-800 questions and community discussion (community answers are unverified)
+- The official Microsoft practice assessment (reviewed answers)
+- Microsoft Learn DP-800T00 knowledge checks (answer key compiled from the course text)
+- Community banks: [kengio/dp-800-study-guide](https://github.com/kengio/dp-800-study-guide) (MIT),
+  [medamin20/DP-800](https://github.com/medamin20/DP-800), [fahmymahamud/dp800-practice](https://github.com/fahmymahamud/dp800-practice),
+  [Kavi274/dp800-study-app](https://github.com/Kavi274/dp800-study-app)
+
+Community answers can be wrong. When in doubt, check the
+[official study guide](https://learn.microsoft.com/en-us/credentials/certifications/resources/study-guides/dp-800) and the Microsoft docs.
+
+This repo is the built site only. The question bank is generated from a separate study repo.

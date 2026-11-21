@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DP-800 Exam Quest</title>
+  <meta name="description" content="Gamified DP-800 (Developing AI-Enabled Database Solutions) practice exam with per-domain scoring.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎯</text></svg>">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <button class="brand" data-nav="home" title="Home">
+      <span class="brand-icon">🎯</span>
+      <span class="brand-text">DP-800 <b>Exam Quest</b></span>
+    </button>
+    <div class="player" id="player"></div>
+  </header>
+
+  <main id="app" aria-live="polite"></main>
+
+  <div id="toasts" class="toasts" aria-live="assertive"></div>
+  <canvas id="confetti" class="confetti"></canvas>
+
+  <footer class="footer">
+    Questions come from ExamTopics, the official Microsoft practice assessment, Microsoft Learn knowledge checks and
+    community banks. Community answers are unverified, so check them against the
+    <a href="https://learn.microsoft.com/en-us/credentials/certifications/resources/study-guides/dp-800" target="_blank" rel="noopener">official study guide</a>.
+    Progress is saved in this browser only.
+  </footer>
+
+  <script src="vendor/marked.min.js"></script>
+  <script src="data/questions.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
