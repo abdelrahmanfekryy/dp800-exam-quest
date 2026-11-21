@@ -318,3 +318,11 @@ details.scenario .md { margin-top: 10px; max-height: 55vh; overflow-y: auto; pad
 .opt .md > pre:first-child { margin-top: 0; }
 .stem pre, details.scenario pre { font-size: 13px; }
 .md td code, .md th code { white-space: nowrap; }
+
+/* headings inside case studies / markdown */
+.md h4 { margin: 18px 0 6px; font-size: 16px; color: var(--warn); border-bottom: 1px solid var(--line); padding-bottom: 4px; }
+.md h4:first-child { margin-top: 4px; }
+.md h5 { margin: 16px 0 4px; font-size: 16px; font-weight: 800; color: var(--accent); }
+.md ul, .md ol { margin: 6px 0 10px; padding-left: 22px; }
+.md li { margin: 3px 0; }
+.md li > ul { margin: 3px 0; }
