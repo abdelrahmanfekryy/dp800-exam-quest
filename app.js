@@ -24,7 +24,7 @@
     official: "Official answer",
     "official-q": "Official question",
     site: "Site answer",
-    reviewed: "Reviewed answer",
+    reviewed: "Explained answer",
     community: "Community answer",
     unverified: "Community · unverified",
   };
