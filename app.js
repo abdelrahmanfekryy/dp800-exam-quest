@@ -203,7 +203,7 @@
     return qs.map((q) => {
       let order = q.options.map((o) => o.key);
       if (q.type !== "self" && !q.noShuffle) order = shuffle(order);
-      const picked = q.type === "dragdrop" ? Array(q.dd.answer.length).fill(null) : [];
+      const picked = isSlotQ(q) ? Array(slotQ(q).answer.length).fill(null) : [];
       return { id: q.id, order, picked, status: "pending", peeked: false, revealed: false, checked: false };
     });
   }
@@ -430,6 +430,50 @@
   // ------------------------------------------------------------------ drag and drop
   let ddSel = null; // tile picked with a click/tap, waiting to be placed
   const ddFilled = (it) => it.picked.every((v) => v !== null && v !== undefined);
+  const slotQ = (q) => q.dd || q.hs;                                   // drag-drop and hotspot share slot grading
+  const isSlotQ = (q) => q.type === "dragdrop" || q.type === "hotspot";
+  const slotScore = (q, it) => it.picked.filter((v, k) => v === slotQ(q).answer[k]).length;
+
+  // ------------------------------------------------------------------ hotspot (dropdowns / Yes-No)
+  function hsHTML(q, it, mode) {
+    const hs = q.hs;
+    const interactive = mode === "quiz" && !it.checked;
+    const showResult = mode === "review" || (mode === "quiz" && it.checked && session.instant);
+    const showCorrect = mode === "study-open";
+    const val = (k) => (showCorrect ? hs.answer[k] : it.picked[k]);
+    const state = (k) => (showResult ? (it.picked[k] === hs.answer[k] ? "correct" : "wrong") : showCorrect ? "reveal" : "");
+    const fix = (k) => (showResult && it.picked[k] !== hs.answer[k] ? `<span class="fix">✔ ${esc(hs.answer[k])}</span>` : "");
+
+    if (hs.statements) {
+      const cell = (k, o) => {
+        let c = "yn";
+        if (val(k) === o) c += " on";
+        if (showResult && it.picked[k] === o) c += o === hs.answer[k] ? " correct" : " wrong";
+        if ((showResult || showCorrect) && hs.answer[k] === o && it.picked[k] !== o) c += " should";
+        return `<td class="yn-cell"><button class="${c}" data-yn="${k}" data-v="${o}" ${interactive ? "" : "disabled"} aria-label="${o} for statement ${k + 1}" aria-pressed="${val(k) === o}"></button></td>`;
+      };
+      return `<div class="hs"><div class="dd-title">Answer Area</div>
+        <table class="yn-table"><thead><tr><th>Statements</th><th>Yes</th><th>No</th></tr></thead><tbody>
+        ${hs.statements.map((st, k) => `<tr class="${state(k)}"><td class="yn-st">${marked.parseInline(st)}${fix(k)}</td>${cell(k, "Yes")}${cell(k, "No")}</tr>`).join("")}
+        </tbody></table></div>`;
+    }
+
+    const select = (k) => {
+      const v = val(k);
+      if (mode === "study") return `<select class="hs-select" aria-label="Options for selection ${k + 1}"><option>Select…</option>${hs.options[k].map((o) => `<option>${esc(o)}</option>`).join("")}</select>`;
+      if (!interactive) return `<span class="hs-pick ${state(k)}">${v ? esc(v) : '<span class="ph">not answered</span>'}${fix(k)}</span>`;
+      return `<select class="hs-select ${v ? "filled" : ""}" data-hs="${k}" aria-label="Selection ${k + 1}">
+        <option value="">Select…</option>${hs.options[k].map((o, i) => `<option value="${i}" ${o === v ? "selected" : ""}>${esc(o)}</option>`).join("")}</select>`;
+    };
+    let area;
+    if (hs.template) {
+      const parts = hs.template.split(/\[\[(\d+)\]\]/);
+      area = `<pre class="dd-code hs-code"><code>${parts.map((p, i) => (i % 2 ? select(+p) : esc(p))).join("")}</code></pre>`;
+    } else {
+      area = `<div class="dd-targets">${hs.targets.map((t, k) => `<div class="dd-row"><div class="dd-label">${marked.parseInline(t)}:</div><div class="dd-cell">${select(k)}</div></div>`).join("")}</div>`;
+    }
+    return `<div class="hs"><div class="dd-title">Answer Area</div>${area}</div>`;
+  }
 
   // mode: "quiz" (interactive until checked), "review" (show result), "study" (empty), "study-open" (answers shown)
   function ddHTML(q, it, mode) {
@@ -477,7 +521,7 @@
   }
 
   function answerLine(q, it) {
-    if (q.type === "self" || q.type === "dragdrop") return "";
+    if (q.type === "self" || isSlotQ(q)) return "";
     const labels = q.answer.map((k) => LETTERS[it.order.indexOf(k)]).sort();
     return `<div class="answer-line">✅ Correct answer: ${labels.join(", ")}</div>`;
   }
@@ -526,6 +570,7 @@
         ${multiN ? `<div class="hint">Select ${multiN} answers.</div>` : ""}
         ${q.type === "single" || q.type === "multi" ? `<div class="options">${it.order.map((k, i) => optionHTML(q, it, k, i)).join("")}</div>` : ""}
         ${q.type === "dragdrop" ? ddHTML(q, it, "quiz") : ""}
+        ${q.type === "hotspot" ? hsHTML(q, it, "quiz") : ""}
 
         ${feedbackHTML(q, it)}
 
@@ -541,7 +586,7 @@
 
         <div class="actions">
           <button class="btn" data-act="prev" ${session.idx === 0 ? "disabled" : ""}>← Prev</button>
-          ${q.type !== "self" && !it.checked ? `<button class="btn primary" data-act="check" ${(q.type === "dragdrop" ? ddFilled(it) : it.picked.length) ? "" : "disabled"}>${session.instant ? "Check answer" : "Save answer"}</button>` : ""}
+          ${q.type !== "self" && !it.checked ? `<button class="btn primary" data-act="check" ${(isSlotQ(q) ? ddFilled(it) : it.picked.length) ? "" : "disabled"}>${session.instant ? "Check answer" : "Save answer"}</button>` : ""}
           ${q.type === "dragdrop" && !it.checked && it.picked.some((v) => v) ? `<button class="btn ghost" data-act="dd-clear">↺ Clear</button>` : ""}
           <span class="spacer"></span>
           ${session.idx < n - 1 ? `<button class="btn ${it.status !== "pending" ? "primary" : ""}" data-act="next">${it.status === "pending" ? "Skip →" : "Next →"}</button>` : ""}
@@ -567,7 +612,7 @@
       return "";
     }
     const ok = it.status === "correct";
-    const part = q.type === "dragdrop" ? ` <span class="muted small">${it.picked.filter((v, k) => v === q.dd.answer[k]).length} of ${q.dd.answer.length} targets correct</span>` : "";
+    const part = isSlotQ(q) ? ` <span class="muted small">${slotScore(q, it)} of ${slotQ(q).answer.length} ${q.type === "hotspot" ? "selections" : "targets"} correct</span>` : "";
     return `<div class="feedback ${ok ? "ok" : "no"}"><h4>${ok ? "🎉 Correct!" : "❌ Not quite."}${part} ${it.peeked ? '<span class="muted small">(answer was revealed, so no XP)</span>' : ""}</h4></div>`;
   }
 
@@ -575,7 +620,7 @@
 
   function baseXP(q) {
     let x = ["examtopics", "assessment"].includes(q.source) ? 15 : 10;
-    if (q.type === "multi" || q.type === "dragdrop") x += 5;
+    if (q.type === "multi" || isSlotQ(q)) x += 5;
     return x;
   }
 
@@ -615,9 +660,9 @@
   function check() {
     const it = cur(), q = curQ();
     if (it.checked || !it.picked.length) return;
-    if (q.type === "dragdrop") {
-      if (!ddFilled(it)) { toast("☝️", "Fill every target", `${it.picked.filter((v) => !v).length} target(s) still empty.`); return; }
-      const ok = q.dd.answer.every((a, k) => it.picked[k] === a);
+    if (isSlotQ(q)) {
+      if (!ddFilled(it)) { toast("☝️", q.type === "hotspot" ? "Answer every selection" : "Fill every target", `${it.picked.filter((v) => !v).length} still empty.`); return; }
+      const ok = slotQ(q).answer.every((a, k) => it.picked[k] === a);
       record(q, it, ok, $('[data-act="check"]'));
       renderQuiz();
       if (!ok && session.instant) $("#qcard")?.classList.add("shake");
@@ -753,7 +798,7 @@
     const lbl = (keys) => keys.map((k) => LETTERS[it.order.indexOf(k)]).sort().join(", ");
     const your = q.type === "self" ? (it.skipped ? "Skipped" : it.status === "correct" ? "Self-graded: right" : "Self-graded: wrong")
       : it.skipped ? "Skipped"
-      : q.type === "dragdrop" ? `${it.picked.filter((v, k) => v === q.dd.answer[k]).length}/${q.dd.answer.length} targets` : lbl(it.picked);
+      : isSlotQ(q) ? `${slotScore(q, it)}/${slotQ(q).answer.length} ${q.type === "hotspot" ? "selections" : "targets"}` : lbl(it.picked);
     return `<details class="review-item ${it.status === "correct" ? "ok" : "no"}">
       <summary><b>Q${i + 1}.</b> ${it.status === "correct" ? "✅" : "❌"} ${esc(q.stem.replace(/[#*`>|!\[\]()]/g, "").slice(0, 120))}…
         <span class="muted small">· you: ${esc(your)}${q.type === "single" || q.type === "multi" ? ` · correct: ${lbl(q.answer)}` : ""}</span></summary>
@@ -761,6 +806,7 @@
         ${q.scenario ? `<details class="scenario"><summary>📋 Case study / scenario</summary><div class="md">${md(q.scenario)}</div></details>` : ""}
         <div class="md">${md(q.stem)}</div>
         ${q.type === "dragdrop" ? ddHTML(q, it, "review") : ""}
+        ${q.type === "hotspot" ? hsHTML(q, it, "review") : ""}
         ${q.type === "single" || q.type === "multi" ? `<div class="options">${it.order.map((k, j) => {
           const o = q.options.find((x) => x.key === k);
           const cls = q.answer.includes(k) ? "correct" : it.picked.includes(k) ? "wrong" : "dim";
@@ -796,6 +842,7 @@
           ${q.scenario ? `<details class="scenario"><summary>📋 Case study / scenario</summary><div class="md">${md(q.scenario)}</div></details>` : ""}
           <div class="md">${md(q.stem)}</div>
           ${q.type === "dragdrop" ? ddHTML(q, { picked: q.dd.answer.map(() => null) }, open ? "study-open" : "study") : ""}
+          ${q.type === "hotspot" ? hsHTML(q, { picked: q.hs.answer.map(() => null) }, open ? "study-open" : "study") : ""}
           ${q.options.length ? `<div class="options">${q.options.map((o) => `<div class="opt ${open ? (q.answer.includes(o.key) ? "correct" : "dim") : ""}"><span class="key">${o.key}</span><span class="md">${md(o.text)}</span></div>`).join("")}</div>` : ""}
           <div class="answer-box">${open
             ? `<div class="inner">${q.type === "single" || q.type === "multi" ? `<div class="answer-line">✅ Correct answer: ${q.answer.join(", ")}</div>` : ""}<div class="md">${md(q.type === "self" ? q.answerMd : q.explanation)}</div></div>`
@@ -829,6 +876,13 @@
     if (ds.sreveal) { study.open[ds.sreveal] = true; return renderStudy(); }
     if (ds.filter) return renderResults(ds.filter);
     if (ds.goto) return go(+ds.goto);
+    if (ds.yn !== undefined && session && !session.finished && $("#qcard")?.contains(t)) {
+      const it = cur();
+      if (it.checked) return;
+      it.picked[+ds.yn] = ds.v;
+      saveSession();
+      return renderQuiz();
+    }
     if ((ds.tile || ds.slot) && session && !session.finished && $("#qcard")?.contains(t)) {
       const it = cur(), q = curQ();
       if (q.type !== "dragdrop" || it.checked) return;
@@ -938,13 +992,22 @@
     }
   });
   document.addEventListener("change", (e) => {
+    if (e.target.dataset.hs !== undefined && session && !cur().checked) {
+      const k = +e.target.dataset.hs, i = e.target.value;
+      cur().picked[k] = i === "" ? null : curQ().hs.options[k][+i];
+      saveSession();
+      renderQuiz();
+      $(`select[data-hs="${k}"]`)?.focus();
+      return;
+    }
     const k = e.target.dataset.pref;
     if (k) { S.prefs[k] = e.target.checked; save(); renderSetup(); }
   });
 
   document.addEventListener("keydown", (e) => {
     // Drag-drop controls: let focused tiles use native Enter/Space, and make slots keyboard-clickable
-    if (e.target.closest?.(".dd")) {
+    if (e.target.tagName === "SELECT") return;
+    if (e.target.closest?.(".dd, .hs")) {
       if (e.target.dataset?.slot !== undefined && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); e.target.click(); }
       if (e.key === "Enter" || e.key === " ") return;
     }
