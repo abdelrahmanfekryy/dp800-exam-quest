@@ -243,3 +243,38 @@ details.scenario .md { margin-top: 10px; max-height: 55vh; overflow-y: auto; pad
 .lightbox { position: fixed; inset: 0; background: rgba(0,0,0,.85); display: grid; place-items: center; z-index: 80; cursor: zoom-out; padding: 20px; }
 .lightbox img { max-width: 95vw; max-height: 92vh; cursor: zoom-out; }
 .kbd { font-family: var(--mono); font-size: 12px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; padding: 0 5px; }
+
+/* ---------- drag and drop ---------- */
+.dd { display: grid; grid-template-columns: minmax(200px, 300px) 1fr; gap: 14px; margin: 16px 0 6px; align-items: start; }
+@media (max-width: 760px) { .dd { grid-template-columns: 1fr; } }
+.dd-title { font-weight: 800; font-size: 13px; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); margin-bottom: 8px; }
+.dd-values { background: var(--bg2); border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px; position: sticky; top: 70px; }
+.dd-values.over { border-color: var(--accent); }
+.dd-help { margin-top: 4px; }
+.tile { text-align: left; font-family: var(--mono); font-size: 13px; background: var(--card2); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; cursor: grab; transition: border-color .12s, transform .08s, background .12s; overflow-wrap: anywhere; }
+.tile:hover:not(:disabled) { border-color: var(--accent); }
+.tile.sel { border-color: var(--warn); background: rgba(255, 184, 77, .15); box-shadow: 0 0 0 2px rgba(255,184,77,.35); }
+.tile:disabled { cursor: default; opacity: .7; }
+.tile.dragging, .slot.dragging { opacity: .4; }
+.dd-answer { min-width: 0; }
+.dd-code { margin: 0; white-space: pre; line-height: 2.1; font-size: 13px; }
+.slot {
+  display: inline-block; min-width: 170px; padding: 0 10px; line-height: 1.75; vertical-align: middle;
+  border: 2px dashed #46607f; border-radius: 7px; background: rgba(91, 157, 255, .05); color: var(--text);
+  font-family: var(--mono); font-size: 13px; white-space: nowrap; cursor: pointer;
+}
+.dd.live .slot:hover { border-color: var(--accent); }
+.slot .ph { color: #5d7391; font-style: italic; font-family: system-ui, sans-serif; font-size: 12px; }
+.slot.filled { border-style: solid; border-color: var(--accent); background: rgba(91, 157, 255, .14); cursor: grab; }
+.slot.over { border-color: var(--warn); background: rgba(255, 184, 77, .18); }
+.slot.correct { border: 2px solid var(--good); background: rgba(46, 204, 113, .16); cursor: default; }
+.slot.wrong { border: 2px solid var(--bad); background: rgba(255, 93, 108, .14); cursor: default; }
+.slot.wrong s { text-decoration-color: rgba(255,93,108,.8); color: #ffb3bb; }
+.slot:focus-visible { outline: 2px solid var(--warn); outline-offset: 2px; }
+.slot.reveal { border: 2px solid var(--good); background: rgba(46, 204, 113, .1); cursor: default; }
+.fix { display: block; color: var(--good); font-family: var(--mono); font-size: 12px; font-weight: 700; line-height: 1.6; }
+.dd-targets { display: grid; gap: 10px; }
+.dd-row { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(220px, 1.2fr); gap: 10px; align-items: center; background: var(--bg2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+@media (max-width: 760px) { .dd-row { grid-template-columns: 1fr; } }
+.dd-row .slot { display: block; min-width: 0; white-space: normal; overflow-wrap: anywhere; min-height: 34px; }
+.dd-row .fix { white-space: normal; }
