@@ -8,7 +8,12 @@
   const BANK = window.QUESTION_BANK;
   const DOMAINS = BANK.domains;
   const QUESTIONS = BANK.questions;
-  const QMAP = Object.fromEntries(QUESTIONS.map((q) => [q.id, q]));
+  // The T-SQL notebook exam is a separate bank: it never mixes into the DP-800 exams, drills, study bank or mistakes
+  const TSQL = window.TSQL_BANK || { sections: [], questions: [] };
+  const TSQL_Q = TSQL.questions;
+  const QMAP = Object.fromEntries([...QUESTIONS, ...TSQL_Q].map((q) => [q.id, q]));
+  const DP_IDS = new Set(QUESTIONS.map((q) => q.id));
+  const isDp = (id) => DP_IDS.has(id);
   const STORE_KEY = "dp800quest.v1";
   const SESSION_KEY = "dp800quest.session.v1";
   const PASS = 700;
@@ -27,6 +32,7 @@
     reviewed: "Explained answer",
     community: "Community answer",
     unverified: "Community · unverified",
+    notebook: "Checked in the notebook",
   };
 
   const LEVEL_TITLES = [
@@ -58,7 +64,8 @@
   // ------------------------------------------------------------------ state
   const defaultState = () => ({
     xp: 0, badges: {}, qstats: {}, history: [], bestStreak: 0, answered: 0, correct: 0, redeemed: 0,
-    prefs: { mode: "exam", count: 50, timed: true, instant: true, sources: Object.keys(SOURCES), domains: [1, 2, 3] },
+    prefs: { mode: "exam", count: 50, timed: true, instant: true, sources: Object.keys(SOURCES), domains: [1, 2, 3],
+             tsqlOff: [], tsqlInstant: true },   // T-SQL sections switched off: new sections start switched on
   });
   let S = load(STORE_KEY) || defaultState();
   S = Object.assign(defaultState(), S);
@@ -232,19 +239,31 @@
         if (part.length) { sections.push({ domain: d, start: qs.length, count: part.length }); qs.push(...part); }
       }
     } else if (mode === "mistakes" || mode === "retry") {
-      const ids = opts.ids || Object.entries(S.qstats).filter(([, st]) => st.last === "wrong").map(([id]) => id);
+      const ids = opts.ids || Object.entries(S.qstats).filter(([id, st]) => st.last === "wrong" && isDp(id)).map(([id]) => id);
       const list = ids.map((id) => QMAP[id]).filter(Boolean);
       title = mode === "retry" ? "Retry missed questions" : "Mistake review";
       for (const d of [1, 2, 3]) {
         const part = groupScenarios(shuffle(list.filter((q) => q.domain === d)));
         if (part.length) { sections.push({ domain: d, start: qs.length, count: part.length }); qs.push(...part); }
       }
+    } else if (mode === "tsql") {
+      // Notebook order, one section per notebook section; opts.ids = retry a subset
+      const want = opts.ids ? new Set(opts.ids) : null;
+      const list = TSQL_Q.filter((q) => (want ? want.has(q.id) : !p.tsqlOff.includes(q.section)));
+      title = want ? "T-SQL exam · retry missed questions" : `T-SQL notebook exam · ${list.length} questions`;
+      for (const s of TSQL.sections) {
+        const part = list.filter((q) => q.section === s.id);
+        if (part.length) {
+          sections.push({ key: "t" + s.id, domain: part[0].domain, name: `${s.id}. ${s.name}`, short: s.id, start: qs.length, count: part.length });
+          qs.push(...part);
+        }
+      }
     }
     if (!qs.length) { toast("🤷", "No questions match", "Change the filters and try again."); return; }
     const timed = mode === "exam" && p.timed;
     session = {
       mode, title, sections, items: buildItems(qs), idx: 0, xp: 0, combo: 0, maxCombo: 0,
-      instant: mode !== "exam" || p.instant, startedAt: Date.now(),
+      instant: mode === "tsql" ? p.tsqlInstant : mode !== "exam" || p.instant, startedAt: Date.now(),
       timeLimit: timed ? qs.length * 120 : 0, elapsedBefore: 0, resumedAt: Date.now(), paused: false, finished: false,
     };
     scenOpen = {};
@@ -267,7 +286,7 @@
     const counts = {};
     for (const q of QUESTIONS) counts[srcGroup(q)] = (counts[srcGroup(q)] || 0) + 1;
     const seen = Object.keys(S.qstats).length;
-    const wrongCount = Object.values(S.qstats).filter((s) => s.last === "wrong").length;
+    const wrongCount = Object.entries(S.qstats).filter(([id, s]) => s.last === "wrong" && isDp(id)).length;
     const best = S.history.filter((h) => h.mode === "exam").reduce((m, h) => Math.max(m, h.score), 0);
 
     app.innerHTML = `
@@ -307,6 +326,7 @@
           ["drill", "🏋️", "Domain drill", "Practice one or more domains. Instant feedback, XP and combos."],
           ["mistakes", "🩹", "Mistake review", `Retry the ${wrongCount} question${wrongCount === 1 ? "" : "s"} you last got wrong.`],
           ["study", "📖", "Study bank", "Browse and search all questions, with answers hidden until you reveal them."],
+          ["tsql", "🧪", "T-SQL notebook exam", `${TSQL_Q.length} questions that follow the T-SQL notebook example by example, in order. No time limit. Kept separate from the DP-800 exams.`],
         ].map(([id, ic, name, desc]) => `
           <button class="mode ${p.mode === id ? "selected" : ""}" data-mode="${id}">
             <div class="ic">${ic}</div><h3>${name}</h3><p>${desc}</p>
@@ -378,11 +398,23 @@
         ${srcChips}
         <div class="actions"><button class="btn primary big" data-act="start">Start drill ▶</button></div>`;
     } else if (p.mode === "mistakes") {
-      const wrong = Object.entries(S.qstats).filter(([, s]) => s.last === "wrong").map(([id]) => QMAP[id]).filter(Boolean);
+      const wrong = Object.entries(S.qstats).filter(([id, s]) => s.last === "wrong" && isDp(id)).map(([id]) => QMAP[id]).filter(Boolean);
       el.innerHTML = `
         <h3>🩹 Mistake review</h3>
         <p class="muted">${wrong.length ? `${wrong.length} questions to fix: ${DOMAINS.map((d) => `${esc(d.short)} <b>${wrong.filter((q) => q.domain === d.id).length}</b>`).join(" · ")}. Answer one correctly and it leaves this list.` : "No mistakes recorded yet. Take an exam or a drill first."}</p>
         <div class="actions"><button class="btn primary big" data-act="start" ${wrong.length ? "" : "disabled"}>Start review ▶</button></div>`;
+    } else if (p.mode === "tsql") {
+      const per = Object.fromEntries(TSQL.sections.map((s) => [s.id, TSQL_Q.filter((q) => q.section === s.id).length]));
+      const n = TSQL_Q.filter((q) => !p.tsqlOff.includes(q.section)).length;
+      el.innerHTML = `
+        <h3>🧪 T-SQL notebook exam</h3>
+        <p class="muted">Exam-style questions on every example in the T-SQL notebook (notebooks/tsql-variables-and-data-types.ipynb), in the notebook's order, with explanations. There's no time limit, and your place is saved if you leave. These questions aren't mixed into the DP-800 exams, drills, study bank or mistake review.</p>
+        <div class="field"><label>Notebook sections <span class="muted small">(${n} questions selected)</span></label><div class="chips">
+          ${chip("All", !p.tsqlOff.length, 'data-tsall="1"')}
+          ${TSQL.sections.map((s) => chip(`${esc(s.id)}. ${esc(s.name)} <span class="muted">(${per[s.id]})</span>`, !p.tsqlOff.includes(s.id), `data-tsec="${esc(s.id)}"`)).join("")}
+        </div></div>
+        <label class="toggle"><input type="checkbox" data-pref="tsqlInstant" ${p.tsqlInstant ? "checked" : ""}> Instant feedback (show the answer and explanation after each question)</label>
+        <div class="actions"><button class="btn primary big" data-act="start" ${n ? "" : "disabled"}>Start T-SQL exam ▶</button></div>`;
     } else if (p.mode === "study") {
       el.innerHTML = `<h3>📖 Study bank</h3><p class="muted">Browse all ${QUESTIONS.length} questions by domain. Answers stay hidden until you click them.</p>
         <div class="actions"><button class="btn primary big" data-act="study">Open study bank ▶</button></div>`;
@@ -393,6 +425,9 @@
   const cur = () => session.items[session.idx];
   const curQ = () => QMAP[cur().id];
   const sectionOf = (i) => session.sections.find((s) => i >= s.start && i < s.start + s.count);
+  const secName = (s) => s.name || dom(s.domain).name;      // T-SQL sections carry their own name
+  const secShort = (s) => s.short || dom(s.domain).short;
+  const secKey = (s) => s.key || s.domain;
 
   function elapsed() { return session.elapsedBefore + (session.paused ? 0 : (Date.now() - session.resumedAt) / 1000); }
   function pause() { if (session && !session.finished && !session.paused) { session.elapsedBefore = elapsed(); session.paused = true; saveSession(); } }
@@ -541,7 +576,7 @@
 
     app.innerHTML = `
       <div class="quiz-head d${q.domain}">
-        <span class="sec-tag">Section ${secIdx + 1} of ${session.sections.length} · ${esc(d.name)}</span>
+        <span class="sec-tag">Section ${secIdx + 1} of ${session.sections.length} · ${esc(sec.name || d.name)}</span>
         <span class="spacer"></span>
         <div class="hud">
           <span class="pill">⭐ +${session.xp}</span>
@@ -549,8 +584,8 @@
           <span class="pill timer" id="timer">${session.timeLimit ? "⏳ " + fmtTime(session.timeLimit - elapsed()) : "⏱️ " + fmtTime(elapsed())}</span>
         </div>
       </div>
-      <div class="sections-bar">
-        ${session.sections.map((s, i) => `<div class="sb d${s.domain} ${i === secIdx ? "cur" : ""} ${i < secIdx ? "done" : ""}" style="--n:${s.count}" title="${esc(dom(s.domain).name)}">${i + 1}. ${esc(dom(s.domain).short)} (${s.count})</div>`).join("")}
+      <div class="sections-bar ${session.sections.length > 4 ? "many" : ""}">
+        ${session.sections.map((s, i) => `<div class="sb d${s.domain} ${i === secIdx ? "cur" : ""} ${i < secIdx ? "done" : ""}" style="--n:${s.count}" title="${esc(secName(s))}">${s.key ? "" : i + 1 + ". "}${esc(secShort(s))} (${s.count})</div>`).join("")}
       </div>
       <div class="progress">${session.sections.map((s) => {
         const answered = session.items.slice(s.start, s.start + s.count).filter((x) => x.status !== "pending").length;
@@ -595,7 +630,7 @@
       </div>
 
       <div class="nav-grid">
-        ${session.sections.map((s, si) => `<div class="sep">Section ${si + 1}: ${esc(dom(s.domain).name)}</div>` +
+        ${session.sections.map((s, si) => `<div class="sep">Section ${si + 1}: ${esc(secName(s))}</div>` +
           session.items.slice(s.start, s.start + s.count).map((x, j) => {
             const i = s.start + j;
             const cls = x.status === "pending" ? "" : (session.instant || x.revealed) ? (x.status === "correct" ? "ok" : "no") : "ans";
@@ -650,7 +685,7 @@
     }
     if (S.answered >= 100) award("c100");
     if (S.answered >= 500) award("c500");
-    if (Object.keys(S.qstats).length >= QUESTIONS.length) award("all");
+    if (Object.keys(S.qstats).filter(isDp).length >= QUESTIONS.length) award("all");
     const h = new Date().getHours();
     if (h >= 0 && h < 4) award("owl");
     save();
@@ -705,7 +740,7 @@
     for (const s of session.sections) {
       const items = session.items.slice(s.start, s.start + s.count);
       const c = items.filter((x) => x.status === "correct").length;
-      per[s.domain] = { c, t: items.length, score: Math.round((1000 * c) / items.length) };
+      per[secKey(s)] = { c, t: items.length, score: Math.round((1000 * c) / items.length) };
     }
     const total = session.items.length;
     const corr = session.items.filter((x) => x.status === "correct").length;
@@ -722,15 +757,18 @@
       if (!session.items.some((x) => x.peeked || x.skipped) && total >= 20) award("nopeek");
       if (pass && total >= 50 && secs < total * 60) award("speed");
     }
-    for (const [d, r] of Object.entries(per)) {
-      if (r.t >= 10 && r.score >= 900) { award("d" + d); bonus += 50; }
+    if (session.mode !== "tsql") {
+      for (const [d, r] of Object.entries(per)) {
+        if (r.t >= 10 && r.score >= 900) { award("d" + d); bonus += 50; }
+      }
     }
     if (corr === total && total >= 10) bonus += 200;
     if (bonus) gainXP(bonus);
 
     session.finished = true;
     session.result = { per, score, pass, corr, total, secs, bonus };
-    S.history.push({ date: Date.now(), mode: session.mode, title: session.title, n: total, score, pass, domains: per, xp: session.xp });
+    S.history.push({ date: Date.now(), mode: session.mode, title: session.title, n: total, score, pass,
+                     domains: session.mode === "tsql" ? {} : per, xp: session.xp });
     if (S.history.length > 50) S.history = S.history.slice(-50);
     save();
     saveSession();
@@ -759,14 +797,18 @@
       </div>
 
       <div class="card">
-        <h3 style="margin-top:0">Score by exam domain</h3>
-        ${DOMAINS.filter((d) => R.per[d.id]).map((d) => { const r = R.per[d.id]; return `
-          <div class="dom-result d${d.id}">
-            <div class="top"><span><b>${d.id}. ${esc(d.name)}</b> <span class="muted small">(${d.weight[0]}–${d.weight[1]}% of exam)</span></span>
+        <h3 style="margin-top:0">${session.mode === "tsql" ? "Score by notebook section" : "Score by exam domain"}</h3>
+        ${(session.mode === "tsql"
+          ? session.sections.map((s) => ({ cls: s.domain, label: `<b>${esc(secName(s))}</b>`, r: R.per[secKey(s)] }))
+          : DOMAINS.filter((d) => R.per[d.id]).map((d) => ({ cls: d.id, r: R.per[d.id],
+              label: `<b>${d.id}. ${esc(d.name)}</b> <span class="muted small">(${d.weight[0]}–${d.weight[1]}% of exam)</span>` }))
+        ).map(({ cls, label, r }) => `
+          <div class="dom-result d${cls}">
+            <div class="top"><span>${label}</span>
               <span><span class="grade">${r.score}</span> <span class="muted small">/ 1000 · ${r.c}/${r.t} · ${perfLabel(r.score)}</span></span></div>
             <div class="bar"><i style="width:${r.score / 10}%"></i><span class="pass-mark" title="700 = passing"></span></div>
-          </div>`; }).join("")}
-        <div class="muted small">Microsoft's score report shows your performance by skill area the same way. The white mark is 700.</div>
+          </div>`).join("")}
+        <div class="muted small">${session.mode === "tsql" ? "The white mark is 700, the DP-800 pass mark." : "Microsoft's score report shows your performance by skill area the same way. The white mark is 700."}</div>
       </div>
 
       <div class="card">
@@ -780,7 +822,7 @@
           const items = session.items.slice(s.start, s.start + s.count).map((it, j) => [it, s.start + j])
             .filter(([it]) => filter === "all" || (filter === "wrong" ? it.status !== "correct" : it.status === "correct"));
           if (!items.length) return "";
-          return `<h4 class="d${s.domain}" style="color:var(--dc);margin:18px 0 6px">${esc(dom(s.domain).name)}</h4>` + items.map(([it, i]) => reviewItem(it, i)).join("");
+          return `<h4 class="d${s.domain}" style="color:var(--dc);margin:18px 0 6px">${esc(secName(s))}</h4>` + items.map(([it, i]) => reviewItem(it, i)).join("");
         }).join("")}
       </div>
 
@@ -788,7 +830,7 @@
         <button class="btn" data-act="home">🏠 Home</button>
         <span class="spacer"></span>
         ${session.items.some((x) => x.status !== "correct") ? `<button class="btn" data-act="retry">🔁 Retry missed questions</button>` : ""}
-        <button class="btn primary" data-act="again">🎯 New ${session.mode === "exam" ? "exam" : "session"}</button>
+        <button class="btn primary" data-act="again">🎯 New ${session.mode === "exam" || session.mode === "tsql" ? "exam" : "session"}</button>
       </div>`;
     window.scrollTo(0, 0);
   }
@@ -871,6 +913,8 @@
     if (ds.count) { S.prefs.count = ds.count === "all" ? "all" : +ds.count; save(); return renderSetup(); }
     if (ds.src) { toggleIn(S.prefs.sources, ds.src); save(); return renderSetup(); }
     if (ds.dom) { toggleIn(S.prefs.domains, +ds.dom); save(); return renderSetup(); }
+    if (ds.tsec) { toggleIn(S.prefs.tsqlOff, ds.tsec); save(); return renderSetup(); }
+    if (ds.tsall) { S.prefs.tsqlOff = S.prefs.tsqlOff.length ? [] : TSQL.sections.map((s) => s.id); save(); return renderSetup(); }
     if (ds.sdom) { toggleIn(study.domains, +ds.sdom); study.shown = 25; return renderStudy(); }
     if (ds.ssrc) { toggleIn(study.sources, ds.ssrc); study.shown = 25; return renderStudy(); }
     if (ds.sreveal) { study.open[ds.sreveal] = true; return renderStudy(); }
@@ -902,6 +946,7 @@
     switch (ds.act) {
       case "start":
         if (S.prefs.mode === "mistakes") return startSession("mistakes");
+        if (S.prefs.mode === "tsql") return startSession("tsql");
         if (!S.prefs.sources.length) return toast("☝️", "Pick at least one source", "");
         if (S.prefs.mode === "drill" && !S.prefs.domains.length) return toast("☝️", "Pick at least one domain", "");
         return startSession(S.prefs.mode);
@@ -929,7 +974,7 @@
       }
       case "home": session = null; saveSession(); return renderHome();
       case "again": { const m = session.mode === "retry" ? "mistakes" : session.mode; session = null; return startSession(m); }
-      case "retry": { const ids = session.items.filter((x) => x.status !== "correct").map((x) => x.id); return startSession("retry", { ids }); }
+      case "retry": { const ids = session.items.filter((x) => x.status !== "correct").map((x) => x.id); return startSession(session.mode === "tsql" ? "tsql" : "retry", { ids }); }
       case "export": {
         const blob = new Blob([JSON.stringify(S)], { type: "application/json" });
         const a = document.createElement("a");

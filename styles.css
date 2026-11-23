@@ -147,6 +147,8 @@ main { width: 100%; max-width: 1000px; margin: 0 auto; padding: 24px 18px 40px; 
 .sections-bar .sb { flex: var(--n); background: var(--card2); border-radius: 8px; padding: 6px 10px; font-size: 12px; border: 1px solid var(--line); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .sections-bar .sb.cur { border-color: var(--dc); color: var(--dc); background: color-mix(in srgb, var(--dc) 14%, var(--card2)); }
 .sections-bar .sb.done { opacity: .6; }
+.sections-bar.many { flex-wrap: wrap; }                      /* the T-SQL exam has 16 sections: natural widths, wrapped */
+.sections-bar.many .sb { flex: 0 0 auto; }
 
 .qcard { position: relative; }
 .qmeta { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; font-size: 12px; color: var(--muted); margin-bottom: 10px; }
