@@ -34,5 +34,14 @@ window.SERVICE_EXAMS = [
   "count": 35,
   "sections": 6,
   "file": "data/exams/sqlproj.js?v=615937f1b9"
+ },
+ {
+  "id": "identity",
+  "name": "Entra ID, Managed Identity & Key Vault",
+  "icon": "🔐",
+  "blurb": "Identity and secrets from A to Z: Microsoft Entra ID, app registrations and tokens, managed identities and workload identity federation, Azure RBAC, Entra authentication for Azure SQL, and Azure Key Vault with TDE and Always Encrypted keys.",
+  "count": 23,
+  "sections": 6,
+  "file": "data/exams/identity.js?v=1374cb2ffb"
  }
 ];
