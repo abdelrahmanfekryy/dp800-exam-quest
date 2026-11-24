@@ -22,6 +22,7 @@ A gamified practice exam for **Microsoft DP-800: Developing AI-Enabled Database 
   - **Azure SQL platform** (18 questions in 5 sections): tiers, serverless, pools, HA/DR, backups, networking, tuning
   - **Azure Monitor & KQL** (14 questions in 5 sections)
   - **GitHub Copilot & MCP** (10 questions in 5 sections), from the GitHub and Learn docs
+  - **Microsoft Fabric** (13 questions in 5 sections): OneLake, SQL database in Fabric, mirroring, CI/CD
 
 ## Question sources
 
