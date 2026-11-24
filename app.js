@@ -8,10 +8,11 @@
   const BANK = window.QUESTION_BANK;
   const DOMAINS = BANK.domains;
   const QUESTIONS = BANK.questions;
-  // The T-SQL notebook exam is a separate bank: it never mixes into the DP-800 exams, drills, study bank or mistakes
-  const TSQL = window.TSQL_BANK || { sections: [], questions: [] };
-  const TSQL_Q = TSQL.questions;
-  const QMAP = Object.fromEntries([...QUESTIONS, ...TSQL_Q].map((q) => [q.id, q]));
+  // Service exams (T-SQL, Azure OpenAI, …) are separate banks: they never mix into the DP-800 exams, drills,
+  // study bank or mistakes. data/exams/index.js lists them; each bank file loads only when its exam is opened.
+  const EXAMS = window.SERVICE_EXAMS || [];
+  const BANKS = (window.SERVICE_BANKS = window.SERVICE_BANKS || {});
+  const QMAP = Object.fromEntries(QUESTIONS.map((q) => [q.id, q]));
   const DP_IDS = new Set(QUESTIONS.map((q) => q.id));
   const isDp = (id) => DP_IDS.has(id);
   const STORE_KEY = "dp800quest.v1";
@@ -33,6 +34,7 @@
     community: "Community answer",
     unverified: "Community · unverified",
     notebook: "Checked in the notebook",
+    docs: "Checked in Microsoft docs",
   };
 
   const LEVEL_TITLES = [
@@ -65,12 +67,49 @@
   const defaultState = () => ({
     xp: 0, badges: {}, qstats: {}, history: [], bestStreak: 0, answered: 0, correct: 0, redeemed: 0,
     prefs: { mode: "exam", count: 50, timed: true, instant: true, sources: Object.keys(SOURCES), domains: [1, 2, 3],
-             tsqlOff: [], tsqlInstant: true },   // T-SQL sections switched off: new sections start switched on
+             // service exams: the open exam, sections switched off per exam (new sections start switched on)
+             svc: EXAMS[0]?.id || "tsql", svcOff: {}, svcInstant: true, svcWrongOnly: false },
   });
   let S = load(STORE_KEY) || defaultState();
+  migrate(S);
   S = Object.assign(defaultState(), S);
   S.prefs = Object.assign(defaultState().prefs, S.prefs);
   let session = load(SESSION_KEY);
+  if (session && session.mode === "tsql") { session.mode = "svc"; session.exam = "tsql"; }
+
+  // Before service exams, the T-SQL exam had its own mode and settings
+  function migrate(st) {
+    const p = st.prefs;
+    if (!p) return;
+    if (p.tsqlOff) { p.svcOff = Object.assign({ tsql: p.tsqlOff }, p.svcOff); delete p.tsqlOff; }
+    if ("tsqlInstant" in p) { p.svcInstant = p.tsqlInstant; delete p.tsqlInstant; }
+    if (p.mode === "tsql") { p.mode = "service"; p.svc = "tsql"; }
+    for (const h of st.history || []) if (h.mode === "tsql") { h.mode = "svc"; h.exam = "tsql"; }
+  }
+
+  // Load a service exam's bank (a script tag, so it also works when index.html is opened from disk)
+  const loading = {};
+  function loadExam(id) {
+    if (BANKS[id]) { indexBank(id); return Promise.resolve(BANKS[id]); }
+    const ex = EXAMS.find((e) => e.id === id);
+    if (!ex) return Promise.reject(new Error("unknown exam " + id));
+    return (loading[id] ||= new Promise((res, rej) => {
+      const el = document.createElement("script");
+      el.src = ex.file;
+      el.onload = () => (BANKS[id] ? (indexBank(id), res(BANKS[id])) : rej(new Error("empty bank " + id)));
+      el.onerror = () => { delete loading[id]; el.remove(); rej(new Error("could not load " + ex.file)); };
+      document.head.appendChild(el);
+    }));
+  }
+  function indexBank(id) {
+    const b = BANKS[id];
+    if (b.indexed) return;
+    for (const q of b.questions) QMAP[q.id] = q;
+    b.indexed = true;
+  }
+  const isSvc = () => session && session.mode === "svc";
+  const examMeta = (id) => EXAMS.find((e) => e.id === id) || { id, name: id, icon: "🧪", blurb: "", count: 0 };
+  const examBest = (id) => S.history.filter((h) => h.mode === "svc" && h.exam === id && !h.retry).reduce((m, h) => Math.max(m, h.score), -1);
   let timerHandle = null;
 
   function load(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } }
@@ -246,15 +285,21 @@
         const part = groupScenarios(shuffle(list.filter((q) => q.domain === d)));
         if (part.length) { sections.push({ domain: d, start: qs.length, count: part.length }); qs.push(...part); }
       }
-    } else if (mode === "tsql") {
-      // Notebook order, one section per notebook section; opts.ids = retry a subset
+    } else if (mode === "svc") {
+      // The exam's own order, one session section per exam section; opts.ids = retry a subset
+      const exam = opts.exam || p.svc, bank = BANKS[exam];
+      if (!bank) { toast("⚠️", "Exam not loaded", "Open it from the home page again."); return; }
       const want = opts.ids ? new Set(opts.ids) : null;
-      const list = TSQL_Q.filter((q) => (want ? want.has(q.id) : !p.tsqlOff.includes(q.section)));
-      title = want ? "T-SQL exam · retry missed questions" : `T-SQL notebook exam · ${list.length} questions`;
-      for (const s of TSQL.sections) {
+      const off = p.svcOff[exam] || [];
+      const list = bank.questions.filter((q) => (want ? want.has(q.id)
+        : !off.includes(q.section) && (!p.svcWrongOnly || S.qstats[q.id]?.last === "wrong")));
+      title = want ? `${bank.name} exam · retry missed questions`
+        : `${bank.name} exam · ${p.svcWrongOnly ? "mistakes · " : ""}${list.length} questions`;
+      opts.retry = !!want || p.svcWrongOnly || list.length < bank.questions.length;
+      for (const s of bank.sections) {
         const part = list.filter((q) => q.section === s.id);
         if (part.length) {
-          sections.push({ key: "t" + s.id, domain: part[0].domain, name: `${s.id}. ${s.name}`, short: s.id, start: qs.length, count: part.length });
+          sections.push({ key: "s" + s.id, domain: part[0].domain, name: `${s.id}. ${s.name}`, short: s.id, start: qs.length, count: part.length });
           qs.push(...part);
         }
       }
@@ -263,7 +308,8 @@
     const timed = mode === "exam" && p.timed;
     session = {
       mode, title, sections, items: buildItems(qs), idx: 0, xp: 0, combo: 0, maxCombo: 0,
-      instant: mode === "tsql" ? p.tsqlInstant : mode !== "exam" || p.instant, startedAt: Date.now(),
+      ...(mode === "svc" ? { exam: opts.exam || p.svc, partial: opts.retry } : {}),
+      instant: mode === "svc" ? p.svcInstant : mode !== "exam" || p.instant, startedAt: Date.now(),
       timeLimit: timed ? qs.length * 120 : 0, elapsedBefore: 0, resumedAt: Date.now(), paused: false, finished: false,
     };
     scenOpen = {};
@@ -326,7 +372,7 @@
           ["drill", "🏋️", "Domain drill", "Practice one or more domains. Instant feedback, XP and combos."],
           ["mistakes", "🩹", "Mistake review", `Retry the ${wrongCount} question${wrongCount === 1 ? "" : "s"} you last got wrong.`],
           ["study", "📖", "Study bank", "Browse and search all questions, with answers hidden until you reveal them."],
-          ["tsql", "🧪", "T-SQL notebook exam", `${TSQL_Q.length} questions that follow the T-SQL notebook example by example, in order. No time limit. Kept separate from the DP-800 exams.`],
+          ["service", "🧪", "Service exams", `${EXAMS.length} exam${EXAMS.length === 1 ? "" : "s"}, one per technology (${EXAMS.map((e) => esc(e.name)).join(", ")}), each covering it A to Z. No time limit. Kept separate from the DP-800 exams.`],
         ].map(([id, ic, name, desc]) => `
           <button class="mode ${p.mode === id ? "selected" : ""}" data-mode="${id}">
             <div class="ic">${ic}</div><h3>${name}</h3><p>${desc}</p>
@@ -403,18 +449,40 @@
         <h3>🩹 Mistake review</h3>
         <p class="muted">${wrong.length ? `${wrong.length} questions to fix: ${DOMAINS.map((d) => `${esc(d.short)} <b>${wrong.filter((q) => q.domain === d.id).length}</b>`).join(" · ")}. Answer one correctly and it leaves this list.` : "No mistakes recorded yet. Take an exam or a drill first."}</p>
         <div class="actions"><button class="btn primary big" data-act="start" ${wrong.length ? "" : "disabled"}>Start review ▶</button></div>`;
-    } else if (p.mode === "tsql") {
-      const per = Object.fromEntries(TSQL.sections.map((s) => [s.id, TSQL_Q.filter((q) => q.section === s.id).length]));
-      const n = TSQL_Q.filter((q) => !p.tsqlOff.includes(q.section)).length;
+    } else if (p.mode === "service") {
+      if (!EXAMS.some((e) => e.id === p.svc)) p.svc = EXAMS[0]?.id;
+      const picker = `<div class="exam-picker">${EXAMS.map((e) => {
+        const best = examBest(e.id);
+        return `<button class="exam-card ${p.svc === e.id ? "selected" : ""}" data-svc="${esc(e.id)}">
+          <span class="ic">${e.icon}</span><b>${esc(e.name)}</b>
+          <span class="muted small">${e.count} questions · ${e.sections} section${e.sections === 1 ? "" : "s"}</span>
+          <span class="small best">${best >= 0 ? `Best ${best}` : "Not taken yet"}</span></button>`; }).join("")}</div>`;
+      const bank = BANKS[p.svc];
+      if (!p.svc) { el.innerHTML = `<h3>🧪 Service exams</h3><p class="muted">No service exams are built yet.</p>`; return; }
+      if (!bank) {
+        el.innerHTML = `<h3>🧪 Service exams</h3>${picker}<p class="muted">Loading the ${esc(examMeta(p.svc).name)} exam…</p>`;
+        loadExam(p.svc).then(() => S.prefs.mode === "service" && renderSetup())
+          .catch(() => { if ($("#setup")) $("#setup").innerHTML = `<h3>🧪 Service exams</h3>${picker}<p class="muted">⚠️ Couldn't load this exam. Check your connection and reload the page.</p>`; });
+        return;
+      }
+      indexBank(p.svc);
+      const off = (p.svcOff[p.svc] ||= []);
+      const per = Object.fromEntries(bank.sections.map((s) => [s.id, bank.questions.filter((q) => q.section === s.id).length]));
+      const inSecs = bank.questions.filter((q) => !off.includes(q.section));
+      const wrong = inSecs.filter((q) => S.qstats[q.id]?.last === "wrong").length;
+      const n = p.svcWrongOnly ? wrong : inSecs.length;
       el.innerHTML = `
-        <h3>🧪 T-SQL notebook exam</h3>
-        <p class="muted">Exam-style questions on every example in the T-SQL notebook (notebooks/tsql-variables-and-data-types.ipynb), in the notebook's order, with explanations. There's no time limit, and your place is saved if you leave. These questions aren't mixed into the DP-800 exams, drills, study bank or mistake review.</p>
-        <div class="field"><label>Notebook sections <span class="muted small">(${n} questions selected)</span></label><div class="chips">
-          ${chip("All", !p.tsqlOff.length, 'data-tsall="1"')}
-          ${TSQL.sections.map((s) => chip(`${esc(s.id)}. ${esc(s.name)} <span class="muted">(${per[s.id]})</span>`, !p.tsqlOff.includes(s.id), `data-tsec="${esc(s.id)}"`)).join("")}
+        <h3>🧪 Service exams</h3>
+        ${picker}
+        <h3 style="margin-top:18px">${bank.icon} ${esc(bank.name)}</h3>
+        <p class="muted">${esc(bank.blurb)} ${esc(bank.sourceNote || "")} Questions follow the exam's own order, with explanations. There's no time limit, and your place is saved if you leave. These questions aren't mixed into the DP-800 exams, drills, study bank or mistake review.</p>
+        <div class="field"><label>Sections <span class="muted small">(${n} questions selected)</span></label><div class="chips">
+          ${chip("All", !off.length, 'data-tsall="1"')}
+          ${bank.sections.map((s) => chip(`${esc(s.id)}. ${esc(s.name)} <span class="muted">(${per[s.id]})</span>`, !off.includes(s.id), `data-tsec="${esc(s.id)}"`)).join("")}
         </div></div>
-        <label class="toggle"><input type="checkbox" data-pref="tsqlInstant" ${p.tsqlInstant ? "checked" : ""}> Instant feedback (show the answer and explanation after each question)</label>
-        <div class="actions"><button class="btn primary big" data-act="start" ${n ? "" : "disabled"}>Start T-SQL exam ▶</button></div>`;
+        <label class="toggle"><input type="checkbox" data-pref="svcWrongOnly" ${p.svcWrongOnly ? "checked" : ""}> Mistakes only (the ${wrong} question${wrong === 1 ? "" : "s"} in these sections you last got wrong)</label>
+        <label class="toggle"><input type="checkbox" data-pref="svcInstant" ${p.svcInstant ? "checked" : ""}> Instant feedback (show the answer and explanation after each question)</label>
+        <div class="actions"><button class="btn primary big" data-act="start" ${n ? "" : "disabled"}>Start ${esc(bank.name)} exam ▶</button></div>`;
     } else if (p.mode === "study") {
       el.innerHTML = `<h3>📖 Study bank</h3><p class="muted">Browse all ${QUESTIONS.length} questions by domain. Answers stay hidden until you click them.</p>
         <div class="actions"><button class="btn primary big" data-act="study">Open study bank ▶</button></div>`;
@@ -425,7 +493,7 @@
   const cur = () => session.items[session.idx];
   const curQ = () => QMAP[cur().id];
   const sectionOf = (i) => session.sections.find((s) => i >= s.start && i < s.start + s.count);
-  const secName = (s) => s.name || dom(s.domain).name;      // T-SQL sections carry their own name
+  const secName = (s) => s.name || dom(s.domain).name;      // service-exam sections carry their own name
   const secShort = (s) => s.short || dom(s.domain).short;
   const secKey = (s) => s.key || s.domain;
 
@@ -757,7 +825,7 @@
       if (!session.items.some((x) => x.peeked || x.skipped) && total >= 20) award("nopeek");
       if (pass && total >= 50 && secs < total * 60) award("speed");
     }
-    if (session.mode !== "tsql") {
+    if (!isSvc()) {
       for (const [d, r] of Object.entries(per)) {
         if (r.t >= 10 && r.score >= 900) { award("d" + d); bonus += 50; }
       }
@@ -768,7 +836,8 @@
     session.finished = true;
     session.result = { per, score, pass, corr, total, secs, bonus };
     S.history.push({ date: Date.now(), mode: session.mode, title: session.title, n: total, score, pass,
-                     domains: session.mode === "tsql" ? {} : per, xp: session.xp });
+                     domains: isSvc() ? {} : per, xp: session.xp,
+                     ...(isSvc() ? { exam: session.exam, retry: !!session.partial } : {}) });
     if (S.history.length > 50) S.history = S.history.slice(-50);
     save();
     saveSession();
@@ -797,8 +866,8 @@
       </div>
 
       <div class="card">
-        <h3 style="margin-top:0">${session.mode === "tsql" ? "Score by notebook section" : "Score by exam domain"}</h3>
-        ${(session.mode === "tsql"
+        <h3 style="margin-top:0">${isSvc() ? "Score by section" : "Score by exam domain"}</h3>
+        ${(isSvc()
           ? session.sections.map((s) => ({ cls: s.domain, label: `<b>${esc(secName(s))}</b>`, r: R.per[secKey(s)] }))
           : DOMAINS.filter((d) => R.per[d.id]).map((d) => ({ cls: d.id, r: R.per[d.id],
               label: `<b>${d.id}. ${esc(d.name)}</b> <span class="muted small">(${d.weight[0]}–${d.weight[1]}% of exam)</span>` }))
@@ -808,7 +877,7 @@
               <span><span class="grade">${r.score}</span> <span class="muted small">/ 1000 · ${r.c}/${r.t} · ${perfLabel(r.score)}</span></span></div>
             <div class="bar"><i style="width:${r.score / 10}%"></i><span class="pass-mark" title="700 = passing"></span></div>
           </div>`).join("")}
-        <div class="muted small">${session.mode === "tsql" ? "The white mark is 700, the DP-800 pass mark." : "Microsoft's score report shows your performance by skill area the same way. The white mark is 700."}</div>
+        <div class="muted small">${isSvc() ? "The white mark is 700, the DP-800 pass mark." : "Microsoft's score report shows your performance by skill area the same way. The white mark is 700."}</div>
       </div>
 
       <div class="card">
@@ -830,7 +899,7 @@
         <button class="btn" data-act="home">🏠 Home</button>
         <span class="spacer"></span>
         ${session.items.some((x) => x.status !== "correct") ? `<button class="btn" data-act="retry">🔁 Retry missed questions</button>` : ""}
-        <button class="btn primary" data-act="again">🎯 New ${session.mode === "exam" || session.mode === "tsql" ? "exam" : "session"}</button>
+        <button class="btn primary" data-act="again">🎯 New ${session.mode === "exam" || isSvc() ? "exam" : "session"}</button>
       </div>`;
     window.scrollTo(0, 0);
   }
@@ -896,6 +965,8 @@
 
   // ------------------------------------------------------------------ events
   document.addEventListener("click", (e) => {
+    const link = e.target.closest("a[href^='http']");
+    if (link) { link.target = "_blank"; link.rel = "noopener"; return; }   // source links open in a new tab
     const t = e.target.closest("button, img, [data-nav], [data-slot]");
     if (!t) return;
     if (t.tagName === "IMG" && t.closest("button.opt")) return t.closest("button.opt").click();
@@ -913,8 +984,13 @@
     if (ds.count) { S.prefs.count = ds.count === "all" ? "all" : +ds.count; save(); return renderSetup(); }
     if (ds.src) { toggleIn(S.prefs.sources, ds.src); save(); return renderSetup(); }
     if (ds.dom) { toggleIn(S.prefs.domains, +ds.dom); save(); return renderSetup(); }
-    if (ds.tsec) { toggleIn(S.prefs.tsqlOff, ds.tsec); save(); return renderSetup(); }
-    if (ds.tsall) { S.prefs.tsqlOff = S.prefs.tsqlOff.length ? [] : TSQL.sections.map((s) => s.id); save(); return renderSetup(); }
+    if (ds.svc) { S.prefs.svc = ds.svc; save(); return renderSetup(); }
+    if (ds.tsec) { toggleIn((S.prefs.svcOff[S.prefs.svc] ||= []), ds.tsec); save(); return renderSetup(); }
+    if (ds.tsall && BANKS[S.prefs.svc]) {
+      const off = S.prefs.svcOff[S.prefs.svc] || [];
+      S.prefs.svcOff[S.prefs.svc] = off.length ? [] : BANKS[S.prefs.svc].sections.map((s) => s.id);
+      save(); return renderSetup();
+    }
     if (ds.sdom) { toggleIn(study.domains, +ds.sdom); study.shown = 25; return renderStudy(); }
     if (ds.ssrc) { toggleIn(study.sources, ds.ssrc); study.shown = 25; return renderStudy(); }
     if (ds.sreveal) { study.open[ds.sreveal] = true; return renderStudy(); }
@@ -946,7 +1022,7 @@
     switch (ds.act) {
       case "start":
         if (S.prefs.mode === "mistakes") return startSession("mistakes");
-        if (S.prefs.mode === "tsql") return startSession("tsql");
+        if (S.prefs.mode === "service") return startSession("svc");
         if (!S.prefs.sources.length) return toast("☝️", "Pick at least one source", "");
         if (S.prefs.mode === "drill" && !S.prefs.domains.length) return toast("☝️", "Pick at least one domain", "");
         return startSession(S.prefs.mode);
@@ -973,8 +1049,8 @@
         return;
       }
       case "home": session = null; saveSession(); return renderHome();
-      case "again": { const m = session.mode === "retry" ? "mistakes" : session.mode; session = null; return startSession(m); }
-      case "retry": { const ids = session.items.filter((x) => x.status !== "correct").map((x) => x.id); return startSession(session.mode === "tsql" ? "tsql" : "retry", { ids }); }
+      case "again": { const m = session.mode === "retry" ? "mistakes" : session.mode, exam = session.exam; session = null; return startSession(m, { exam }); }
+      case "retry": { const ids = session.items.filter((x) => x.status !== "correct").map((x) => x.id); return startSession(isSvc() ? "svc" : "retry", { ids, exam: session.exam }); }
       case "export": {
         const blob = new Blob([JSON.stringify(S)], { type: "application/json" });
         const a = document.createElement("a");
@@ -985,7 +1061,7 @@
         const inp = document.createElement("input");
         inp.type = "file"; inp.accept = "application/json";
         inp.onchange = async () => {
-          try { S = Object.assign(defaultState(), JSON.parse(await inp.files[0].text())); save(); renderHome(); toast("📥", "Progress imported", ""); }
+          try { const st = JSON.parse(await inp.files[0].text()); migrate(st); S = Object.assign(defaultState(), st); S.prefs = Object.assign(defaultState().prefs, S.prefs); save(); renderHome(); toast("📥", "Progress imported", ""); }
           catch { toast("⚠️", "Import failed", "That file isn't valid progress data."); }
         };
         inp.click();
@@ -1085,5 +1161,10 @@
   if (session && session.finished) { session = null; saveSession(); }
   if (session) { session.paused = true; }
   renderPlayer();
-  renderHome();
+  if (session && session.mode === "svc") {
+    // An unfinished service-exam session needs its bank before the home page can offer to resume it
+    app.innerHTML = `<p class="muted">Loading…</p>`;
+    loadExam(session.exam).catch(() => { session = null; saveSession(); toast("⚠️", "Couldn't load your unfinished exam", "It was discarded."); })
+      .finally(renderHome);
+  } else renderHome();
 })();

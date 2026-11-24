@@ -113,6 +113,17 @@ main { width: 100%; max-width: 1000px; margin: 0 auto; padding: 24px 18px 40px; 
 .mode p { margin: 0; color: var(--muted); font-size: 14px; }
 .mode.selected { border-color: var(--accent); background: linear-gradient(180deg, rgba(91,157,255,.12), var(--card)); }
 
+/* Service exams: one card per exam (T-SQL, Azure OpenAI, …) */
+.exam-picker { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; margin: 8px 0 4px; }
+.exam-card {
+  display: flex; flex-direction: column; gap: 2px; text-align: left; background: var(--card2); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 12px 14px; transition: border-color .15s, transform .12s;
+}
+.exam-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+.exam-card .ic { font-size: 24px; }
+.exam-card .best { color: var(--accent); }
+.exam-card.selected { border-color: var(--accent); background: linear-gradient(180deg, rgba(91,157,255,.14), var(--card2)); }
+
 .setup { margin-top: 18px; }
 .setup h3 { margin-top: 0; }
 .field { margin: 12px 0; }
@@ -147,14 +158,14 @@ main { width: 100%; max-width: 1000px; margin: 0 auto; padding: 24px 18px 40px; 
 .sections-bar .sb { flex: var(--n); background: var(--card2); border-radius: 8px; padding: 6px 10px; font-size: 12px; border: 1px solid var(--line); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .sections-bar .sb.cur { border-color: var(--dc); color: var(--dc); background: color-mix(in srgb, var(--dc) 14%, var(--card2)); }
 .sections-bar .sb.done { opacity: .6; }
-.sections-bar.many { flex-wrap: wrap; }                      /* the T-SQL exam has 16 sections: natural widths, wrapped */
+.sections-bar.many { flex-wrap: wrap; }                      /* service exams have many sections: natural widths, wrapped */
 .sections-bar.many .sb { flex: 0 0 auto; }
 
 .qcard { position: relative; }
 .qmeta { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; font-size: 12px; color: var(--muted); margin-bottom: 10px; }
 .tag { border: 1px solid var(--line); border-radius: 6px; padding: 1px 7px; }
 .tag.conf-official { border-color: var(--good); color: var(--good); }
-.tag.conf-site, .tag.conf-reviewed { border-color: var(--accent); color: var(--accent); }
+.tag.conf-site, .tag.conf-reviewed, .tag.conf-docs { border-color: var(--accent); color: var(--accent); }
 .tag.conf-community, .tag.conf-unverified { border-color: var(--warn); color: var(--warn); }
 .tag.fmt { border-color: #ff8fab; color: #ff8fab; }
 .qnum { font-weight: 800; color: var(--text); font-size: 14px; }
