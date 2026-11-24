@@ -21,6 +21,7 @@ A gamified practice exam for **Microsoft DP-800: Developing AI-Enabled Database 
   - **Event-driven integration** (21 questions in 4 sections): Functions SQL bindings, CES, Logic Apps, Event Hubs, Service Bus
   - **Azure SQL platform** (18 questions in 5 sections): tiers, serverless, pools, HA/DR, backups, networking, tuning
   - **Azure Monitor & KQL** (14 questions in 5 sections)
+  - **GitHub Copilot & MCP** (10 questions in 5 sections), from the GitHub and Learn docs
 
 ## Question sources
 
