@@ -18,6 +18,7 @@ A gamified practice exam for **Microsoft DP-800: Developing AI-Enabled Database 
   - **Data API builder** (64 questions in 11 sections), from the Learn docs
   - **SQL Projects & SqlPackage** (35 questions in 6 sections), including GitHub Actions deployments
   - **Entra ID, Managed Identity & Key Vault** (23 questions in 6 sections)
+  - **Event-driven integration** (21 questions in 4 sections): Functions SQL bindings, CES, Logic Apps, Event Hubs, Service Bus
 
 ## Question sources
 

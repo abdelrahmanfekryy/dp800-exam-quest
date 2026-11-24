@@ -43,5 +43,14 @@ window.SERVICE_EXAMS = [
   "count": 23,
   "sections": 6,
   "file": "data/exams/identity.js?v=1374cb2ffb"
+ },
+ {
+  "id": "events",
+  "name": "Event-driven integration",
+  "icon": "⚡",
+  "blurb": "Reacting to database changes from A to Z: Azure Functions SQL trigger and bindings, change tracking, CDC and change event streaming, Logic Apps with the SQL Server connector, Event Hubs, Service Bus and Event Grid.",
+  "count": 21,
+  "sections": 4,
+  "file": "data/exams/events.js?v=0fb02003b0"
  }
 ];
