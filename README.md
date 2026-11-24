@@ -20,6 +20,7 @@ A gamified practice exam for **Microsoft DP-800: Developing AI-Enabled Database 
   - **Entra ID, Managed Identity & Key Vault** (23 questions in 6 sections)
   - **Event-driven integration** (21 questions in 4 sections): Functions SQL bindings, CES, Logic Apps, Event Hubs, Service Bus
   - **Azure SQL platform** (18 questions in 5 sections): tiers, serverless, pools, HA/DR, backups, networking, tuning
+  - **Azure Monitor & KQL** (14 questions in 5 sections)
 
 ## Question sources
 

@@ -61,5 +61,14 @@ window.SERVICE_EXAMS = [
   "count": 18,
   "sections": 5,
   "file": "data/exams/azsql.js?v=2589dce7e7"
+ },
+ {
+  "id": "monitor",
+  "name": "Azure Monitor & KQL",
+  "icon": "📈",
+  "blurb": "Azure Monitor from A to Z: metrics and logs, diagnostic settings, Log Analytics workspaces, table plans and retention, Kusto Query Language, alerts and action groups, Application Insights, workbooks, and monitoring Azure SQL.",
+  "count": 14,
+  "sections": 5,
+  "file": "data/exams/monitor.js?v=d09fe70188"
  }
 ];
