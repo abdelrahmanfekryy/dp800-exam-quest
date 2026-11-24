@@ -16,5 +16,14 @@ window.SERVICE_EXAMS = [
   "count": 139,
   "sections": 12,
   "file": "data/exams/aoai.js?v=25be56f40c"
+ },
+ {
+  "id": "dab",
+  "name": "Data API builder",
+  "icon": "🔌",
+  "blurb": "Data API builder 2.0 from A to Z: the configuration file, the dab CLI, entities, authentication and authorization, REST and GraphQL endpoints, SQL MCP Server, caching, health, telemetry and deployment.",
+  "count": 64,
+  "sections": 11,
+  "file": "data/exams/dab.js?v=217a40f29b"
  }
 ];
