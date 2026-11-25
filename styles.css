@@ -339,3 +339,14 @@ details.scenario .md { margin-top: 10px; max-height: 55vh; overflow-y: auto; pad
 .md ul, .md ol { margin: 6px 0 10px; padding-left: 22px; }
 .md li { margin: 3px 0; }
 .md li > ul { margin: 3px 0; }
+
+/* T-SQL exam: examples of the other options, under the explanation */
+details.examples { margin-top: 14px; border-top: 1px dashed var(--line); padding-top: 10px; }
+details.examples > summary { cursor: pointer; font-weight: 700; color: var(--accent); }
+details.examples .md { margin-top: 8px; }
+details.examples .md h5 { margin: 16px 0 4px; font-size: 15px; }
+details.examples .md h5:first-child { margin-top: 4px; }
+details.examples pre { font-size: 13px; margin: 6px 0; }
+details.examples blockquote { margin: 6px 0; padding: 6px 12px; border-left: 3px solid var(--bad); background: rgba(255, 93, 108, .08); border-radius: 6px; }
+details.examples table, details.scenario table { font-size: 13px; }
+.md th small, .md td small { color: var(--muted); font-weight: 400; }

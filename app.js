@@ -120,6 +120,8 @@
   const $ = (sel, el = document) => el.querySelector(sel);
   const app = $("#app");
   const md = (s) => (s ? marked.parse(s) : "");
+  // Examples of the options a question explains only in its answer, each with the result it gave.
+  const examplesHTML = (q) => (q.examples ? `<details class="examples" open><summary>🧪 The other options, by example (real results)</summary><div class="md">${md(q.examples)}</div></details>` : "");
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const dom = (id) => DOMAINS.find((d) => d.id === id);
   const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
@@ -667,7 +669,7 @@
           ${q.format ? `<span class="tag fmt">${esc(q.format)}</span>` : ""}
           ${q.type === "self" ? `<span class="tag fmt">Self-graded</span>` : ""}
         </div>
-        ${q.scenario ? `<details class="scenario" data-idx="${session.idx}" ${(scenOpen[session.idx] ?? firstOfScenario) ? "open" : ""}><summary>📋 Case study / scenario</summary><div class="md">${md(q.scenario)}</div></details>` : ""}
+        ${q.scenario ? `<details class="scenario" data-idx="${session.idx}" ${(scenOpen[session.idx] ?? (firstOfScenario || !!q.scenarioLabel)) ? "open" : ""}><summary>📋 ${esc(q.scenarioLabel || "Case study / scenario")}</summary><div class="md">${md(q.scenario)}</div></details>` : ""}
         ${q.title ? `<div class="muted small" style="margin-bottom:4px"><b>${esc(q.title.replace(/`/g, ""))}</b></div>` : ""}
         <div class="stem md">${md(q.stem)}</div>
         ${multiN ? `<div class="hint">Select ${multiN} answers.</div>` : ""}
@@ -679,7 +681,7 @@
 
         ${q.type === "self" || session.instant || it.revealed ? `
         <div class="answer-box">
-          ${showAnswer ? `<div class="inner">${answerLine(q, it)}<div class="md">${md(q.type === "self" ? q.answerMd : q.explanation) || '<span class="muted">No explanation available.</span>'}</div>
+          ${showAnswer ? `<div class="inner">${answerLine(q, it)}<div class="md">${md(q.type === "self" ? q.answerMd : q.explanation) || '<span class="muted">No explanation available.</span>'}</div>${examplesHTML(q)}
             ${q.type === "self" && it.status === "pending" ? `<div class="selfgrade"><span class="muted">How did you do?</span>
               <button class="btn good" data-act="self-ok">✅ I got it right</button>
               <button class="btn bad" data-act="self-no">❌ I got it wrong</button></div>` : ""}
@@ -914,7 +916,7 @@
       <summary><b>Q${i + 1}.</b> ${it.status === "correct" ? "✅" : "❌"} ${esc(q.stem.replace(/[#*`>|!\[\]()]/g, "").slice(0, 120))}…
         <span class="muted small">· you: ${esc(your)}${q.type === "single" || q.type === "multi" ? ` · correct: ${lbl(q.answer)}` : ""}</span></summary>
       <div style="margin-top:10px">
-        ${q.scenario ? `<details class="scenario"><summary>📋 Case study / scenario</summary><div class="md">${md(q.scenario)}</div></details>` : ""}
+        ${q.scenario ? `<details class="scenario"><summary>📋 ${esc(q.scenarioLabel || "Case study / scenario")}</summary><div class="md">${md(q.scenario)}</div></details>` : ""}
         <div class="md">${md(q.stem)}</div>
         ${q.type === "dragdrop" ? ddHTML(q, it, "review") : ""}
         ${q.type === "hotspot" ? hsHTML(q, it, "review") : ""}
@@ -922,7 +924,7 @@
           const o = q.options.find((x) => x.key === k);
           const cls = q.answer.includes(k) ? "correct" : it.picked.includes(k) ? "wrong" : "dim";
           return `<div class="opt ${cls}"><span class="key">${LETTERS[j]}</span><span class="md">${md(o.text)}</span></div>`; }).join("")}</div>` : ""}
-        <div class="feedback"><div class="md">${md(q.type === "self" ? q.answerMd : q.explanation) || '<span class="muted">No explanation available.</span>'}</div>
+        <div class="feedback"><div class="md">${md(q.type === "self" ? q.answerMd : q.explanation) || '<span class="muted">No explanation available.</span>'}</div>${examplesHTML(q)}
         <div class="muted small" style="margin-top:8px">${esc(q.sourceLabel)} · ${esc(CONF_LABEL[q.confidence] || "")}</div></div>
       </div></details>`;
   }
@@ -950,13 +952,13 @@
         const open = study.open[q.id];
         return head + `<div class="card bank-item">
           <div class="qmeta"><span class="tag">${esc(q.sourceLabel)}</span>${q.confidence ? `<span class="tag conf-${q.confidence}">${esc(CONF_LABEL[q.confidence] || "")}</span>` : ""}${q.format ? `<span class="tag fmt">${esc(q.format)}</span>` : ""}</div>
-          ${q.scenario ? `<details class="scenario"><summary>📋 Case study / scenario</summary><div class="md">${md(q.scenario)}</div></details>` : ""}
+          ${q.scenario ? `<details class="scenario"><summary>📋 ${esc(q.scenarioLabel || "Case study / scenario")}</summary><div class="md">${md(q.scenario)}</div></details>` : ""}
           <div class="md">${md(q.stem)}</div>
           ${q.type === "dragdrop" ? ddHTML(q, { picked: q.dd.answer.map(() => null) }, open ? "study-open" : "study") : ""}
           ${q.type === "hotspot" ? hsHTML(q, { picked: q.hs.answer.map(() => null) }, open ? "study-open" : "study") : ""}
           ${q.options.length ? `<div class="options">${q.options.map((o) => `<div class="opt ${open ? (q.answer.includes(o.key) ? "correct" : "dim") : ""}"><span class="key">${o.key}</span><span class="md">${md(o.text)}</span></div>`).join("")}</div>` : ""}
           <div class="answer-box">${open
-            ? `<div class="inner">${q.type === "single" || q.type === "multi" ? `<div class="answer-line">✅ Correct answer: ${q.answer.join(", ")}</div>` : ""}<div class="md">${md(q.type === "self" ? q.answerMd : q.explanation)}</div></div>`
+            ? `<div class="inner">${q.type === "single" || q.type === "multi" ? `<div class="answer-line">✅ Correct answer: ${q.answer.join(", ")}</div>` : ""}<div class="md">${md(q.type === "self" ? q.answerMd : q.explanation)}</div>${examplesHTML(q)}</div>`
             : `<button class="reveal" data-sreveal="${q.id}">🔒 Hidden answer: click to reveal</button>`}</div>
         </div>`;
       }).join("")}

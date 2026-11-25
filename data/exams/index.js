@@ -6,7 +6,7 @@ window.SERVICE_EXAMS = [
   "blurb": "Every example in the T-SQL notebook, in order: from SELECT basics to vectors, security and tuning.",
   "count": 280,
   "sections": 16,
-  "file": "data/exams/tsql.js?v=7107427918"
+  "file": "data/exams/tsql.js?v=b770970bac"
  },
  {
   "id": "aoai",

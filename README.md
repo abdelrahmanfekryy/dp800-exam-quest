@@ -13,7 +13,7 @@ A gamified practice exam for **Microsoft DP-800: Developing AI-Enabled Database 
 - The answer is hidden under every question: check your answer or click to reveal it
 - XP, levels, combos and badges. Progress stays in your browser.
 - **Service exams**, kept separate from the DP-800 exams, each covering one technology A to Z (beyond what DP-800 tests):
-  - **T-SQL** (280 questions), written from the study repo's T-SQL notebook
+  - **T-SQL** (280 questions), written from the study repo's T-SQL notebook. Questions about a table show it (columns, types and rows) in a **Use case** panel, and options explained only in the answer come with a runnable example and the result it gave on SQL Server 2025
   - **Azure OpenAI & Foundry** (139 questions in 12 sections), written from the Microsoft Learn docs, with a source link under every answer
   - **Data API builder** (64 questions in 11 sections), from the Learn docs
   - **SQL Projects & SqlPackage** (35 questions in 6 sections), including GitHub Actions deployments
