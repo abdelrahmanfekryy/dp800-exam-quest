@@ -51,7 +51,7 @@ window.SERVICE_EXAMS = [
   "blurb": "Reacting to database changes from A to Z: Azure Functions SQL trigger and bindings, change tracking, CDC and change event streaming, Logic Apps with the SQL Server connector, Event Hubs, Service Bus and Event Grid.",
   "count": 21,
   "sections": 4,
-  "file": "data/exams/events.js?v=0fb02003b0"
+  "file": "data/exams/events.js?v=a37b5f5380"
  },
  {
   "id": "azsql",
