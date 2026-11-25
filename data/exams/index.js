@@ -87,6 +87,6 @@ window.SERVICE_EXAMS = [
   "blurb": "Microsoft Fabric from A to Z for SQL developers: the SaaS platform, OneLake and shortcuts, capacities and workspace roles, SQL database in Fabric, mirroring, lakehouses and warehouses, Real-Time Intelligence, git integration and deployment pipelines.",
   "count": 13,
   "sections": 5,
-  "file": "data/exams/fabric.js?v=e923a2f853"
+  "file": "data/exams/fabric.js?v=75414039b9"
  }
 ];
