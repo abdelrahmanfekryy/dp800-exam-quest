@@ -42,7 +42,7 @@ window.SERVICE_EXAMS = [
   "blurb": "Identity and secrets from A to Z: Microsoft Entra ID, app registrations and tokens, managed identities and workload identity federation, Azure RBAC, Entra authentication for Azure SQL, and Azure Key Vault with TDE and Always Encrypted keys.",
   "count": 23,
   "sections": 6,
-  "file": "data/exams/identity.js?v=1374cb2ffb"
+  "file": "data/exams/identity.js?v=29d56532d8"
  },
  {
   "id": "events",
