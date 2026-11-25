@@ -78,7 +78,7 @@ window.SERVICE_EXAMS = [
   "blurb": "AI-assisted SQL development from A to Z: GitHub Copilot custom instructions, MCP servers in Copilot and VS Code, Copilot in the MSSQL extension and SSMS, Copilot in Azure SQL and in Microsoft Fabric, and SQL MCP Server.",
   "count": 10,
   "sections": 5,
-  "file": "data/exams/copilot.js?v=94e350f6f0"
+  "file": "data/exams/copilot.js?v=bbb5cece5f"
  },
  {
   "id": "fabric",
