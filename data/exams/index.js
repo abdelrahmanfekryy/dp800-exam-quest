@@ -15,7 +15,7 @@ window.SERVICE_EXAMS = [
   "blurb": "Azure OpenAI in Microsoft Foundry from A to Z: resources, models, deployments and quota, security, the Chat Completions and Responses APIs, tools, embeddings, prompts, content safety, RAG with Azure AI Search, fine-tuning, monitoring, and calling models from SQL.",
   "count": 139,
   "sections": 12,
-  "file": "data/exams/aoai.js?v=25be56f40c"
+  "file": "data/exams/aoai.js?v=169ef4c640"
  },
  {
   "id": "dab",
