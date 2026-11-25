@@ -60,7 +60,7 @@ window.SERVICE_EXAMS = [
   "blurb": "Azure SQL Database and Managed Instance from A to Z: logical servers, purchasing models and service tiers, Hyperscale, serverless, elastic pools, high availability, geo-replication and failover groups, backups and restores, networking, and built-in performance tools.",
   "count": 18,
   "sections": 5,
-  "file": "data/exams/azsql.js?v=2589dce7e7"
+  "file": "data/exams/azsql.js?v=3b31e419c4"
  },
  {
   "id": "monitor",
