@@ -33,7 +33,7 @@ window.SERVICE_EXAMS = [
   "blurb": "SQL Database Projects, SqlPackage and CI/CD from A to Z: SDK-style projects, building and validating dacpacs, code analysis, pre/post-deployment scripts, SQLCMD variables, references, schema compare, drift, every SqlPackage action, publish profiles, and GitHub Actions deployments.",
   "count": 35,
   "sections": 6,
-  "file": "data/exams/sqlproj.js?v=615937f1b9"
+  "file": "data/exams/sqlproj.js?v=e304b494ab"
  },
  {
   "id": "identity",
