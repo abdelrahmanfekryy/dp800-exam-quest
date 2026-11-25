@@ -69,7 +69,7 @@ window.SERVICE_EXAMS = [
   "blurb": "Azure Monitor from A to Z: metrics and logs, diagnostic settings, Log Analytics workspaces, table plans and retention, Kusto Query Language, alerts and action groups, Application Insights, workbooks, and monitoring Azure SQL.",
   "count": 14,
   "sections": 5,
-  "file": "data/exams/monitor.js?v=d09fe70188"
+  "file": "data/exams/monitor.js?v=234541968f"
  },
  {
   "id": "copilot",
